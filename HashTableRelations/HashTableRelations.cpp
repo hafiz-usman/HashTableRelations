@@ -34,32 +34,51 @@ class HashTable
     };
 
 public:
-    HashTable(int maxSlots) :
-        _size(0)
+    HashTable(int initialSlots, int maxCollisionsAllowedPerSlot, double growFactor) :
+        _size(0),
+        _initialSlots(initialSlots),
+        _currentSlots(initialSlots),
+        _maxCollisionsAllowedPerSlot(maxCollisionsAllowedPerSlot),
+        _growFactor(growFactor)
     {
-        _table.resize(maxSlots);
+        _table = new vector<list<Node>>(_initialSlots);
+    }
+
+    ~HashTable()
+    {
+        delete _table;
     }
 
     bool insert(int key, Value& value)
     {
         int slot = _hashFunction(key);
-        if (slot < 0 || slot >= _table.size())
+        if (slot < 0 || slot >= _table->size())
         {
             return false;
         }
-        _table[slot].push_back(Node(key, value));
+
+        int numSlotCollisions = _table->at(slot).size();
+        // if any slot has reached the _maxCollisionResizeThreshold, grow the table
+        if (numSlotCollisions >= _maxCollisionsAllowedPerSlot)
+        {
+            _growTable();
+            // IMP!! Since we recreated the table with more slots, the slot needs to be recomputed also!!!
+            slot = _hashFunction(key);
+        }
+
+        _table->at(slot).push_back(Node(key, value));
         _size++;
     }
 
     bool find(int key, Value& retVal)
     {
         int slot = _hashFunction(key);
-        if (slot < 0 || slot >= _table.size())
+        if (slot < 0 || slot >= _table->size())
         {
             return false;
         }
 
-        for (auto iter = _table[slot].begin(); iter != _table[slot].end(); ++iter)
+        for (auto iter = _table->at(slot).begin(); iter != _table->at(slot).end(); ++iter)
         {
             if (iter->key == key)
             {
@@ -74,18 +93,18 @@ public:
     {
         int slot = _hashFunction(key);
 
-        if (slot < 0 || slot >= _table.size())
+        if (slot < 0 || slot >= _table->size())
         {
             return false;
         }
 
         bool found = false;
-        for (auto iter = _table[slot].begin(); iter != _table[slot].end(); ++iter)
+        for (auto iter = _table->at(slot).begin(); iter != _table->at(slot).end(); ++iter)
         {
             if (iter->key == key)
             {
                 found = true;
-                _table[slot].erase(iter);
+                _table->at(slot).erase(iter);
                 _size--;
                 break;
             }
@@ -101,10 +120,10 @@ public:
     void dump()
     {
         cout << "HashTable Dump:" << endl;
-        for (int i = 0; i < _table.size(); i++)
+        for (int i = 0; i < _table->size(); i++)
         {
             cout << "[" << i << "]: " << endl;
-            for (auto b : _table[i])
+            for (auto b : _table->at(i))
             {
                 cout << "  ";
                 cout << "key=" << b.key << ", val=" << b.val.str.c_str() << endl;
@@ -113,14 +132,45 @@ public:
     }
 
 private:
-    vector<list<Node>> _table;
+    vector<list<Node>>* _table;
     int _size;
+    int _initialSlots;
+    int _currentSlots;
+    int _maxCollisionsAllowedPerSlot;
+    int _growFactor;
 
     int _hashFunction(int key)
     {
-        int maxSlots = _table.size();
+        int maxSlots = _table->size();
         int slot = key % maxSlots;
         return slot;
+    }
+
+    void _growTable()
+    {
+        vector<list<Node>>* oldTable = _table;
+        _table = new vector<list<Node>>();
+
+        int temp = _currentSlots * _growFactor;
+        assert(temp > _currentSlots); // check for overflow
+        _table->resize(temp);
+        _currentSlots = temp;
+
+        // MAKE SURE TO RESET SIZE since we're not deleting key's from the original table, the size is continuously going up
+        int oldSize = _size;
+        _size = 0;
+
+        for (int i = 0; i < oldTable->size(); i++)
+        {
+            for (auto iter = oldTable->at(i).begin(); iter != oldTable->at(i).end(); ++iter)
+            {
+                insert(iter->key, iter->val);
+            }
+        }
+
+        cout << "==========     GROW TABLE (old=" << oldTable->size() << ",new=" << _table->size() << ")    ==========" << endl;
+
+        delete oldTable;
     }
 };
 
@@ -141,13 +191,15 @@ int main()
         "help",
     };
 
-    HashTable ht(3);
+    HashTable ht(2, 1, 2);
+    int flag = false;
 
     for (int i = 0; i < input.size(); i++)
     {
         cout << "Inserting: [" << i << "] = " << input[i].c_str() << endl;
-        ht.insert(i, Value(input[i]));
-        //ht.dump();
+        flag = ht.insert(i, Value(input[i]));
+        assert(flag != false);
+        ht.dump();
     }
 
     int k;
@@ -185,7 +237,6 @@ int main()
     assert(ht.find(k, v) == false);
 
     int size = 0;
-    int flag = false;
     k = -1;
     assert(ht.remove(k) == false && ht.size() == input.size());
     k = 0;
