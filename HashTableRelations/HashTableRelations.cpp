@@ -34,9 +34,10 @@ class HashTable
     };
 
 public:
-    HashTable(int size)
+    HashTable(int maxSlots) :
+        _size(0)
     {
-        _table.resize(size);
+        _table.resize(maxSlots);
     }
 
     bool insert(int key, Value& value)
@@ -47,6 +48,7 @@ public:
             return false;
         }
         _table[slot].push_back(Node(key, value));
+        _size++;
     }
 
     bool find(int key, Value& retVal)
@@ -68,6 +70,34 @@ public:
         return false;
     }
 
+    bool remove(int key)
+    {
+        int slot = _hashFunction(key);
+
+        if (slot < 0 || slot >= _table.size())
+        {
+            return false;
+        }
+
+        bool found = false;
+        for (auto iter = _table[slot].begin(); iter != _table[slot].end(); ++iter)
+        {
+            if (iter->key == key)
+            {
+                found = true;
+                _table[slot].erase(iter);
+                _size--;
+                break;
+            }
+        }
+        return found;
+    }
+
+    int size()
+    {
+        return _size;
+    }
+
     void dump()
     {
         cout << "HashTable Dump:" << endl;
@@ -84,11 +114,12 @@ public:
 
 private:
     vector<list<Node>> _table;
+    int _size;
 
     int _hashFunction(int key)
     {
-        int size = _table.size();
-        int slot = key % size;
+        int maxSlots = _table.size();
+        int slot = key % maxSlots;
         return slot;
     }
 };
@@ -152,6 +183,39 @@ int main()
     assert(ht.find(k, v) == false);
     k = input.size() + 1;
     assert(ht.find(k, v) == false);
+
+    int size = 0;
+    int flag = false;
+    k = -1;
+    assert(ht.remove(k) == false && ht.size() == input.size());
+    k = 0;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 1;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 2;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 3;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 4;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 5;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 6;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 7;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 8;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 9;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 10;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 11;
+    assert(ht.remove(k) == true && (size = ht.size()) == (input.size() - (k + 1)) && (flag = ht.find(k, v)) == false);
+    k = 12;
+    assert(ht.remove(k) == false && ht.size() == 0);
+    k = input.size() + 1;
+    assert(ht.remove(k) == false && ht.size() == 0);
 
     return 0;
 }
